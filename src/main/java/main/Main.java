@@ -55,13 +55,13 @@ public class Main extends Application {
 	}*/
 	public static void main(String[] args) {
 		
-		String dbHost="itnt0005";
+		String dbHost="ITNT0005";
 		String dbPort="1433";
 		String dbName="Spieler2_LAB";
 		String dbUser="wkb4";
 		String dbPass="wkb4";
 		
-		String connectionUrl="jdbc:sqlserver://"+dbHost+":"+dbPort+";"+"databaseName="+dbName+";"+"user="+dbUser+";"+"password="+dbPass+";";
+		String connectionUrl="jdbc:sqlserver://"+dbHost+":"+dbPort+";"+"databaseName="+dbName+";"+"user="+dbUser+";"+"password="+dbPass+";"+"encrypt=true;trustServerCertificate=true";
 		
 		Connection con=null;
 		PreparedStatement p_stmt=null;
