@@ -160,7 +160,7 @@ public class Main extends Application {
 		String dbUser="wkb4";
 		String dbPass="wkb4";
 		
-		String connectionUrl="jdbc:sqlserver://"+dbHost+":"+dbPort+";"+"databaseName="+dbName+";"+"user="+dbUser+";"+"password="+dbPass+";";
+		String connectionUrl="jdbc:sqlserver://"+dbHost+":"+dbPort+";"+"databaseName="+dbName+";"+"user="+dbUser+";"+"password="+dbPass+";"+"encrypt=true;trustServerCertificate=true";
 		
 		con=null;
 		PreparedStatement p_stmt=null;
