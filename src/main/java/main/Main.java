@@ -16,10 +16,12 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+import java.text.DecimalFormat;
 
 public class Main extends Application {
 	
 	private static Connection con;
+	DecimalFormat formatter=new DecimalFormat("#0.0");
 	
 	@Override
 	public void start(Stage primaryStage) {
@@ -27,6 +29,7 @@ public class Main extends Application {
 			// Create the text input fields
 	         TextField textField1 = new TextField();
 	         TextField textField2 = new TextField();
+	         TextField textField3 = new TextField();
 	         TextField numberField = new TextField();
 
 	        // Create the text output field
@@ -44,96 +47,146 @@ public class Main extends Application {
 	        gridPane.add(textField1, 1, 0);
 	        gridPane.add(new Label("Nachname:"), 0, 1);
 	        gridPane.add(textField2, 1, 1);
-	        gridPane.add(new Label("Note:"), 0, 2);
-	        gridPane.add(numberField, 1, 2);
+	        gridPane.add(new Label("Studiengang:"), 0, 2);
+	        gridPane.add(textField3, 1, 2);
+	        gridPane.add(new Label("Note:"), 0, 3);
+	        gridPane.add(numberField, 1, 3);
 
 	        // Add the output field to the GridPane
-	        gridPane.add(new Label(), 0, 3);
-	        gridPane.add(outputArea, 1, 3);
+	        gridPane.add(new Label(), 0, 4);
+	        gridPane.add(outputArea, 1, 4);
 
 	        // Create a button to perform some action
-	        Button applyButton = new Button("Add student");
+	        Button applyButton = new Button("Add");
+	        Button deleteButton=new Button("Delete");
 	        Button showAll= new Button("All students");
 	       
 	        applyButton.setOnAction(event->{
 	        	String vorname=textField1.getText();
 	        	String nachname=textField2.getText();
-				Integer note=Integer.valueOf(numberField.getText());
+	        	String studiengang=textField3.getText();
+				Double note=Double.valueOf(numberField.getText());
+				
+				outputArea.clear();
 				
 				//INSERT student stored procedure
 				//insert trigger
 				try {
-					CallableStatement callProcedure=con.prepareCall("{call dbo.InsertStudent(?, ?, ?)}");
-					callProcedure.setString(0, vorname);
-					callProcedure.setString(1, nachname);
-					callProcedure.setInt(2, note);
+					PreparedStatement callProcedure=con.prepareStatement("{call dbo.emmait01_InsertStudents(?, ?, ?, ?)}");
+					//CallableStatement callProcedure=con.prepareCall("{call SWB_DB2_Projekt.dbo.emmait01_InsertStudents(?, ?, ?)}");
+					callProcedure.setString(1, vorname);
+					callProcedure.setString(2, nachname);
+					callProcedure.setString(3, studiengang);
+					callProcedure.setDouble(4, note);
 					
-					callProcedure.executeUpdate();
 					
-					Statement callAverage=con.createStatement();
-					ResultSet rs=callAverage.executeQuery("SELECT Average FROM NoteAverage");
-					
-					outputArea.clear();
-					outputArea.setText("Durchschnitt: "+rs.toString());
-					
-					rs.close();
+					callProcedure.execute();
 					callProcedure.close();
-					callAverage.close();
+					
+					String query="SELECT * FROM emmait01_GradeTable";
+					PreparedStatement pstmt=con.prepareStatement(query);
+					ResultSet rs=pstmt.executeQuery();
+					
+					while(rs.next()) {
+						 String displayStudiengang = rs.getString("Studiengang");
+						 Double displayAvgGrade=rs.getDouble("AvgNote");
+						 
+						 if(displayStudiengang!=null) {
+							 outputArea.appendText(displayStudiengang+": "+formatter.format(displayAvgGrade)+"\n");
+						 }
+					}
+					
+					
+					pstmt.close();
+					rs.close();
+					//rs.close();
+					//callProcedure.close();
+					//callAverage.close();
 					
 				}catch(Exception e) {
 					e.printStackTrace();
 				}
 	        });
 	        
+	        deleteButton.setOnAction(event->{
+	        	
+	        	String vorname=textField1.getText();
+	        	String nachname=textField2.getText();
+	        	
+	        	outputArea.clear();
+	        	
+	        	try {
+					PreparedStatement callProcedure=con.prepareStatement("{call dbo.emmait01_DeleteStudent(?, ?)}");
+					//CallableStatement callProcedure=con.prepareCall("{call SWB_DB2_Projekt.dbo.emmait01_InsertStudents(?, ?, ?)}");
+					callProcedure.setString(1, vorname);
+					callProcedure.setString(2, nachname);
+					callProcedure.execute();
+					callProcedure.close();
+					
+					String query="SELECT * FROM emmait01_GradeTable";
+					PreparedStatement pstmt=con.prepareStatement(query);
+					ResultSet rs=pstmt.executeQuery();
+					
+					while(rs.next()) {
+						 String displayStudiengang = rs.getString("Studiengang");
+						 Double displayAvgGrade=rs.getDouble("AvgNote");
+						 
+						 if(displayStudiengang!=null) {
+							 outputArea.appendText(displayStudiengang+": "+formatter.format(displayAvgGrade)+"\n");
+						 }
+					}
+					
+	        	}catch(Exception e) {
+	        		e.printStackTrace();
+	        	}
+	        });
+	        
 	        showAll.setOnAction(event->{
 	        	//cursor
-	        	try {
-	        		// Create the CallableStatement for calling the stored procedure
-	                CallableStatement callCursor = con.prepareCall("{CALL GetStudents}");
-
-	                // Execute the stored procedure
-	                callCursor.execute();
-
-	                // Retrieve the output from the stored procedure using the getMoreResults and getResultSet methods
-	                int updateCount = -1;
-	                while (true) {
-	                    if (callCursor.getMoreResults()) {
-	                        ResultSet rs = callCursor.getResultSet();
-
-	                        while (rs.next()) {
-	                            String vorname = rs.getString(1);
-	                            String nachname = rs.getString(2);
-	                            int note = rs.getInt(3);
-
-	                            // Append the student information to the outputArea
-	                            outputArea.appendText("Vorname: " + vorname + "\n");
-	                            outputArea.appendText("Nachname: " + nachname + "\n");
-	                            outputArea.appendText("Note: " + note + "\n");
-	                            outputArea.appendText("\n");
-	                        }
-
-	                        rs.close();
-	                    } else {
-	                        updateCount = callCursor.getUpdateCount();
-	                        if (updateCount == -1) {
-	                            break;
-	                        }
-	                    }
-	                }
-
-	                // Close the CallableStatement
-	                callCursor.close();
-	                
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
+                outputArea.clear();
+				
+				//INSERT student stored procedure
+				//insert trigger
+				try {
+					PreparedStatement callProcedure=con.prepareStatement("{call dbo.emmait01_StudentCursor}");				
+					
+					callProcedure.execute();
+					callProcedure.close();
+					
+					String query="SELECT * FROM emmait01_StudentTable";
+					PreparedStatement pstmt=con.prepareStatement(query);
+					ResultSet rs=pstmt.executeQuery();
+					
+					while(rs.next()) {
+						 String displayName=rs.getString("Vorname");
+						 String displayNachName=rs.getString("Nachname");
+						 Double displayNote=rs.getDouble("Note");
+						 String displayBestanden=rs.getString("Bestanden");
+						 String displayStudiengang = rs.getString("Studiengang");
+						 Double displayAvgGrade=rs.getDouble("AvgNote");
+						 
+						 if(displayStudiengang!=null) {
+							 outputArea.appendText(displayName+" "+displayNachName+", "+displayStudiengang+"  "+"Status: "+displayBestanden+", Note: "+formatter.format(displayNote)+" Durchsch. "+formatter.format(displayAvgGrade)+"\n");
+						 }
+					}
+					
+					
+					pstmt.close();
+					rs.close();
+					//rs.close();
+					//callProcedure.close();
+					//callAverage.close();
+					
+				}catch(Exception e) {
 					e.printStackTrace();
 				}
 	        	
 	        });
 
 	        // Add the button to the GridPane
-	        gridPane.add(applyButton, 0, 4);
-	        gridPane.add(showAll, 1, 4);
+	        gridPane.add(applyButton, 0, 5);
+	        gridPane.add(deleteButton, 0, 6);
+	        gridPane.add(showAll, 1, 5);
 	        
 	        ColumnConstraints col1 = new ColumnConstraints();
 	        col1.setPercentWidth(50);
@@ -156,7 +209,7 @@ public class Main extends Application {
 		
 		String dbHost="itnt0005";
 		String dbPort="1433";
-		String dbName="Spieler2_LAB";
+		String dbName="SWB_DB2_Projekt";
 		String dbUser="wkb4";
 		String dbPass="wkb4";
 		
@@ -170,21 +223,14 @@ public class Main extends Application {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 			con=DriverManager.getConnection(connectionUrl);
 			
-			String SQL="SELECT * FROM spieler";
-			p_stmt=con.prepareStatement(SQL);
-			rs=p_stmt.executeQuery();
-			
-			while(rs.next()) {
-				System.out.println(rs.getString("vorname")+" "+rs.getString("name"));
-			}
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
-		finally{
+		/*finally{
 			if(rs!=null) try {rs.close();} catch(Exception e) {}
 			if(p_stmt!=null) try {p_stmt.close();} catch(Exception e) {}
 			if(con!=null) try {con.close();} catch(Exception e) {}
-		}
+		}*/
 		
 		launch(args);
 	}
